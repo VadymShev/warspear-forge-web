@@ -21,67 +21,80 @@ def play_sound(file_path):
             md = f"""<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>"""
             st.components.v1.html(md, height=0)
 
-def icon_metric(col, img_64, label, value):
-    with col:
-        if img_64: 
-            st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{img_64}" width="22"></div>', unsafe_allow_html=True)
-        st.metric(label, value)
-
-# --- СТИЛІЗАЦІЯ (ОПТИМІЗАЦІЯ ПІД МОБІЛЬНІ) ---
+# --- СТИЛІЗАЦІЯ (УЛЬТРА-КОМПАКТ) ---
 st.markdown(f"""
     <style>
-    /* Максимальне звуження бокових відступів */
     .block-container {{ 
-        padding-top: 2rem !important; 
+        padding-top: 1rem !important; 
+        padding-bottom: 0rem !important;
         padding-left: 0.5rem !important; 
         padding-right: 0.5rem !important; 
-        max-width: 100% !important;
     }}
     
     .stApp {{ background-color: #f8f9fa; }}
 
-    /* Компактний Forge-контейнер */
+    /*Forge-контейнер*/
     .forge-container {{ 
         display: flex; 
         flex-direction: row; 
         align-items: center; 
         justify-content: center; 
-        gap: 10px; 
-        margin: 5px 0; 
+        gap: 8px; 
+        margin-bottom: 0px; 
     }}
     
-    .weapon-box img {{ width: 100px !important; height: auto; }}
+    .weapon-box img {{ width: 85px !important; height: auto; }}
     
     .stars-box {{ 
         display: flex; 
         flex-direction: row; 
         flex-wrap: wrap; 
-        width: 130px; /* Зменшено ширину для зірок */
+        width: 110px; 
         gap: 2px; 
-        justify-content: flex-start;
     }}
     
-    .star-img-fixed {{ width: 24px !important; height: 24px !important; }}
+    .star-img-fixed {{ width: 20px !important; height: 20px !important; }}
 
-    /* Кнопки */
-    .stButton>button {{ width: 100%; height: 3.2em; font-size: 14px !important; border-radius: 10px; }}
+    /* Кнопки в один ряд */
+    div[data-testid="stHorizontalBlock"] {{
+        gap: 5px !important;
+    }}
+
+    .stButton>button {{ 
+        width: 100%; 
+        height: 3em; 
+        font-size: 13px !important; 
+        padding: 0px !important;
+    }}
     
+    /* Окремий стиль для головної кнопки */
+    .main-btn button {{
+        background-color: #0d6efd !important;
+        color: white !important;
+    }}
+
     /* Компактна історія */
     .history-box {{ 
         background: white; 
-        padding: 5px; 
-        border-radius: 8px; 
+        padding: 4px; 
+        border-radius: 6px; 
         border: 1px solid #dee2e6; 
-        max-height: 100px; 
+        max-height: 80px; 
         overflow-y: auto; 
         font-size: 11px; 
+        margin-top: 5px;
     }}
 
-    /* Зменшення шрифтів метрик */
-    [data-testid="stMetricValue"] {{ font-size: 14px !important; }}
+    [data-testid="stMetricValue"] {{ font-size: 15px !important; }}
     [data-testid="stMetricLabel"] {{ font-size: 10px !important; }}
     
-    hr {{ margin: 0.5rem 0 !important; }}
+    /* Зменшення полів вводу */
+    .stNumberInput input {{
+        padding: 2px 5px !important;
+        font-size: 12px !important;
+    }}
+    
+    hr {{ margin: 0.3rem 0 !important; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -103,7 +116,7 @@ WEAPON_IMAGES = {
 
 def add_to_history(text):
     st.session_state.history.insert(0, text)
-    if len(st.session_state.history) > 15: st.session_state.history.pop()
+    if len(st.session_state.history) > 10: st.session_state.history.pop()
 
 def sharpen(use_signs):
     if st.session_state.level >= 10: return
@@ -150,40 +163,53 @@ sign_64 = get_image_base64("sign.png")
 sphere_64 = get_image_base64("sphere.png")
 weapon_64 = get_image_base64(img_file)
 
-# Forge Block
+# Forge Block (Зброя + Зірки)
 star_html = "".join([f'<img src="data:image/png;base64,{star_64}" class="star-img-fixed">' for _ in range(st.session_state.level)]) if star_64 else "⭐" * st.session_state.level
 weapon_tag = f'<img src="data:image/png;base64,{weapon_64}">' if weapon_64 else f'<b>{weapon_name}</b>'
 
-st.markdown(f'<div class="forge-container"><div class="weapon-box">{weapon_tag}</div><div class="stars-box">{star_html}</div></div>', unsafe_allow_html=True)
-st.markdown(f'<h1 style="text-align:center; font-size:45px; color:#ffc107; margin:0;">+{st.session_state.level}</h1>', unsafe_allow_html=True)
+st.markdown(f'<div class="forge-container"><div class="weapon-box">{weapon_tag}</div><div class="stars-box">{star_html}</div><div style="font-size:35px; color:#ffc107; font-weight:bold; margin-left:5px;">+{st.session_state.level}</div></div>', unsafe_allow_html=True)
 
-# Metrics
+# Секція Ціни та Статистика (В РЯДОК)
 st.write("---")
-m1, m2, m3 = st.columns(3)
-icon_metric(m1, sign_64, "Знаки", st.session_state.signs_spent)
-icon_metric(m2, sphere_64, "Сфери", st.session_state.spheres_spent)
-icon_metric(m3, None, "Спроби", st.session_state.att)
+c1, c2, c3 = st.columns(3)
 
-# History and Price (В один ряд, дуже компактно)
-col_h, col_p = st.columns([1.2, 1])
-with col_h:
-    h_html = "".join([f"<div>{i}</div>" for i in st.session_state.history])
-    st.markdown(f'<div class="history-box">{h_html}</div>', unsafe_allow_html=True)
-with col_p:
-    p_sign = st.number_input("Знак", value=2500, step=100, label_visibility="collapsed")
-    p_sphere = st.number_input("Сфера", value=400, step=50, label_visibility="collapsed")
+with c1:
+    if sign_64: st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{sign_64}" width="20"></div>', unsafe_allow_html=True)
+    p_sign = st.number_input("Ціна Знака", value=2500, step=100, label_visibility="collapsed")
+    st.metric("Штук", st.session_state.signs_spent)
+
+with c2:
+    if sphere_64: st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{sphere_64}" width="20"></div>', unsafe_allow_html=True)
+    p_sphere = st.number_input("Ціна Сфери", value=400, step=50, label_visibility="collapsed")
+    st.metric("Штук", st.session_state.spheres_spent)
+
+with c3:
+    st.markdown('<div style="text-align:center; height:20px; font-size:12px; color:#6c757d;">Спроби</div>', unsafe_allow_html=True)
+    st.metric("Всього", st.session_state.att)
     total = st.session_state.gold_spent + (st.session_state.signs_spent * p_sign) + (st.session_state.spheres_spent * p_sphere)
-    st.markdown(f"<div style='background:#eee; font-size:12px; padding:4px; border-radius:5px; text-align:center;'><b>{total:,}💰</b></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='background:#eee; font-size:10px; padding:2px; border-radius:4px; text-align:center;'><b>{total:,}💰</b></div>", unsafe_allow_html=True)
 
-# Controls
+# Кнопки (В ОДИН РЯД)
 st.write("")
 use_signs = st.toggle("Знаки", value=True)
-c1, c2, c3 = st.columns([1, 1, 2])
-if c1.button("♻️"):
-    st.session_state.update({'level':0, 'gold_spent':0, 'signs_spent':0, 'spheres_spent':0, 'att':0, 'history':[]})
-    st.rerun()
-if c2.button("🚀"):
-    while st.session_state.level < 10: sharpen(use_signs)
-    st.balloons(); st.rerun()
-if c3.button("🔥 ТОЧИТИ"):
-    sharpen(use_signs); st.rerun()
+btn_col1, btn_col2, btn_col3 = st.columns([0.6, 0.6, 2])
+
+with btn_col1:
+    if st.button("♻️"):
+        st.session_state.update({'level':0, 'gold_spent':0, 'signs_spent':0, 'spheres_spent':0, 'att':0, 'history':[]})
+        st.rerun()
+
+with btn_col2:
+    if st.button("🚀"):
+        while st.session_state.level < 10: sharpen(use_signs)
+        st.balloons(); st.rerun()
+
+with btn_col3:
+    st.markdown('<div class="main-btn">', unsafe_allow_html=True)
+    if st.button("🔥 ТОЧИТИ"):
+        sharpen(use_signs); st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Історія (Знизу, максимально вузька)
+h_html = "".join([f"<span>{i} | </span>" for i in st.session_state.history])
+st.markdown(f'<div class="history-box">{h_html}</div>', unsafe_allow_html=True)
