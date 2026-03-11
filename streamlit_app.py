@@ -31,76 +31,21 @@ st.markdown(f"""
         padding-right: 0.5rem !important; 
         max-width: 500px !important;
     }}
-    
-    .main-forge-area {{
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
-        margin-top: 10px;
-    }}
-    
-    .level-container {{
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        min-width: 70px;
-    }}
-
-    .level-display {{
-        font-size: 38px;
-        color: #ffc107;
-        font-weight: bold;
-        line-height: 1;
-    }}
-    
-    .chance-badge {{
-        font-size: 11px;
-        background: #222;
-        color: #00ff00;
-        padding: 2px 6px;
-        border-radius: 4px;
-        margin-top: 4px;
-        font-family: monospace;
-    }}
-    
+    .main-forge-area {{ display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 12px; margin-top: 10px; }}
+    .level-container {{ display: flex; flex-direction: column; align-items: center; min-width: 70px; }}
+    .level-display {{ font-size: 38px; color: #ffc107; font-weight: bold; line-height: 1; }}
+    .chance-badge {{ font-size: 11px; background: #222; color: #00ff00; padding: 2px 6px; border-radius: 4px; margin-top: 4px; font-family: monospace; }}
     .weapon-box img {{ width: 85px !important; height: auto; }}
-    
-    .stars-box {{
-        display: flex;
-        flex-direction: row;
-        flex-wrap: wrap;
-        width: 110px;
-        gap: 2px;
-    }}
-    
+    .stars-box {{ display: flex; flex-direction: row; flex-wrap: wrap; width: 110px; gap: 2px; }}
     .star-img-fixed {{ width: 18px !important; height: 18px !important; }}
-
     .stButton>button {{ width: 100%; height: 3.5em; font-weight: bold; border-radius: 10px; }}
-    
-    div[data-testid="stHorizontalBlock"] > div:first-child button {{
-        background-color: #0d6efd !important;
-        color: white !important;
-        border: none;
-    }}
-
-    .stats-panel {{
-        text-align: center; 
-        background: #2b2d30; 
-        color: white;
-        padding: 10px; 
-        border-radius: 10px; 
-        margin: 10px 0;
-        border: 1px solid #444;
-    }}
-    
+    div[data-testid="stHorizontalBlock"] > div:first-child button {{ background-color: #0d6efd !important; color: white !important; border: none; }}
+    .stats-panel {{ text-align: center; background: #2b2d30; color: white; padding: 10px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; }}
     hr {{ margin: 0.5rem 0 !important; }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- ЛОГІКА ТА СТАН ---
-CHANCES = {0: 100.0, 1: 60.0, 2: 40.0, 3: 25.0, 4: 15.0, 5: 10.0, 6: 7.0, 7: 4.0, 8: 0.75, 9: 0.25}
+# --- ДАНІ ТА ШАНСИ ---
 WEAPON_IMAGES = {
     "Меч": "sword.png", "Посох": "staff.png", "Дворучний меч": "greatsword.png",
     "Сокира": "axe.png", "Дворучна сокира": "greataxe.png", "Булава": "mace.png",
@@ -108,6 +53,19 @@ WEAPON_IMAGES = {
     "Лук": "bow.png", "Арбалет": "crossbow.png"
 }
 
+# Список одноручної зброї
+ONE_HANDED = ["Меч", "Сокира", "Булава", "Кинджал"]
+
+def get_current_chances(weapon_name):
+    # Базові шанси
+    chances = {0: 100.0, 1: 60.0, 2: 40.0, 3: 25.0, 4: 15.0, 5: 10.0, 6: 7.0, 7: 4.0, 8: 0.75, 9: 0.25}
+    # Підвищені шанси для одноручної зброї
+    if weapon_name in ONE_HANDED:
+        chances[8] = 1.25  # Шанс на +9
+        chances[9] = 0.5   # Шанс на +10
+    return chances
+
+# --- ЛОГІКА СТАНУ ---
 if 'level' not in st.session_state:
     st.session_state.update({
         'level': 0, 'gold_spent': 0, 'signs_spent': 0, 
@@ -122,9 +80,11 @@ def sharpen(use_signs):
     st.session_state.spheres_spent += 1
     if use_signs: st.session_state.signs_spent += 1
     
-    chance = CHANCES.get(st.session_state.level, 0.25)
-    roll = random.uniform(0, 100)
+    # Отримуємо шанси саме для поточної зброї
+    chances = get_current_chances(st.session_state.current_weapon)
+    chance = chances.get(st.session_state.level, 0.25)
     
+    roll = random.uniform(0, 100)
     if roll <= chance:
         st.session_state.level += 1
         st.session_state.last_sound = "success"
@@ -152,8 +112,10 @@ sign_64 = get_image_base64("sign.png")
 sphere_64 = get_image_base64("sphere.png")
 weapon_64 = get_image_base64(img_file)
 
-# --- 1. ВІЗУАЛ ---
-current_chance = CHANCES.get(st.session_state.level, 0.25)
+# --- ВІЗУАЛ ---
+chances_map = get_current_chances(st.session_state.current_weapon)
+current_chance = chances_map.get(st.session_state.level, 0.25)
+
 star_html = "".join([f'<img src="data:image/png;base64,{star_64}" class="star-img-fixed">' for _ in range(st.session_state.level)]) if star_64 else "⭐" * st.session_state.level
 weapon_tag = f'<img src="data:image/png;base64,{weapon_64}">' if weapon_64 else "⚔️"
 
@@ -168,7 +130,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- 2. ЕКОНОМІКА ---
+# --- ЕКОНОМІКА ---
 st.write("---")
 col_s1, col_s2 = st.columns(2)
 with col_s1:
@@ -181,7 +143,7 @@ with col_s2:
     p_sphere = st.number_input("Ціна Сфери", value=400, step=50, label_visibility="collapsed", key="psp")
     st.caption(f"Використано: **{st.session_state.spheres_spent}**")
 
-# --- 3. ПІДСУМОК ---
+# --- ПІДСУМОК ---
 total_gold = st.session_state.gold_spent + (st.session_state.signs_spent * p_sign) + (st.session_state.spheres_spent * p_sphere)
 st.markdown(f"""
     <div class="stats-panel">
@@ -200,27 +162,19 @@ st.markdown(f"""
 
 use_signs = st.toggle("Використовувати Знаки Незламності", value=True)
 
-# --- 4. КНОПКИ ДІЇ ---
+# --- КНОПКИ ---
 st.write("")
 c_main, c_auto, c_reset = st.columns([2, 1, 1])
-
-if c_main.button("🔥 ТОЧИТИ"):
-    sharpen(use_signs)
-    st.rerun()
-
+if c_main.button("🔥 ТОЧИТИ"): sharpen(use_signs); st.rerun()
 if c_auto.button("🚀 +10"):
     while st.session_state.level < 10: sharpen(use_signs)
-    st.balloons()
-    st.rerun()
-
+    st.balloons(); st.rerun()
 if c_reset.button("♻️"):
     st.session_state.update({'level':0, 'gold_spent':0, 'signs_spent':0, 'spheres_spent':0, 'att':0, 'last_sound': None})
     st.rerun()
 
-# --- 5. НАЛАШТУВАННЯ ЗБРОЇ (НИЗ) ---
+# --- ВИБІР ЗБРОЇ (НИЗ) ---
 st.write("---")
-
-# Функція для миттєвого оновлення
 def update_weapon():
     st.session_state.current_weapon = st.session_state.weapon_selector
 
