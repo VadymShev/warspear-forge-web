@@ -21,11 +21,11 @@ def play_sound(file_path):
             md = f"""<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>"""
             st.components.v1.html(md, height=0)
 
-# --- CSS СТИЛІЗАЦІЯ (З ВІДСТУПОМ ЗВЕРХУ) ---
+# --- CSS СТИЛІЗАЦІЯ ---
 st.markdown(f"""
     <style>
     .block-container {{ 
-        padding-top: 3.5rem !important; /* Опускаємо інтерфейс нижче */
+        padding-top: 3.5rem !important; 
         padding-bottom: 2rem !important;
         padding-left: 0.5rem !important; 
         padding-right: 0.5rem !important; 
@@ -79,7 +79,6 @@ st.markdown(f"""
 
     .stButton>button {{ width: 100%; height: 3.5em; font-weight: bold; border-radius: 10px; }}
     
-    /* Колір кнопки ТОЧИТИ */
     div[data-testid="stHorizontalBlock"] > div:first-child button {{
         background-color: #0d6efd !important;
         color: white !important;
@@ -101,20 +100,20 @@ st.markdown(f"""
     """, unsafe_allow_html=True)
 
 # --- ЛОГІКА ТА СТАН ---
-if 'level' not in st.session_state:
-    st.session_state.update({
-        'level': 0, 'gold_spent': 0, 'signs_spent': 0, 
-        'spheres_spent': 0, 'att': 0, 'last_sound': None,
-        'history': [], 'weapon': "Меч"
-    })
-
 CHANCES = {0: 100.0, 1: 60.0, 2: 40.0, 3: 25.0, 4: 15.0, 5: 10.0, 6: 7.0, 7: 4.0, 8: 0.75, 9: 0.25}
 WEAPON_IMAGES = {
-    "Посох": "staff.png", "Меч": "sword.png", "Дворучний меч": "greatsword.png",
+    "Меч": "sword.png", "Посох": "staff.png", "Дворучний меч": "greatsword.png",
     "Сокира": "axe.png", "Дворучна сокира": "greataxe.png", "Булава": "mace.png",
     "Дворучна булава": "maul.png", "Спис": "spear.png", "Кинджал": "dagger.png",
     "Лук": "bow.png", "Арбалет": "crossbow.png"
 }
+
+if 'level' not in st.session_state:
+    st.session_state.update({
+        'level': 0, 'gold_spent': 0, 'signs_spent': 0, 
+        'spheres_spent': 0, 'att': 0, 'last_sound': None,
+        'current_weapon': "Меч"
+    })
 
 def sharpen(use_signs):
     if st.session_state.level >= 10: return
@@ -146,14 +145,14 @@ if st.session_state.last_sound:
     play_sound(f"{st.session_state.last_sound}.mp3")
     st.session_state.last_sound = None
 
-# Завантаження ресурсів
-img_file = WEAPON_IMAGES.get(st.session_state.weapon)
+# Ресурси
+img_file = WEAPON_IMAGES.get(st.session_state.current_weapon)
 star_64 = get_image_base64("star.png")
 sign_64 = get_image_base64("sign.png")
 sphere_64 = get_image_base64("sphere.png")
 weapon_64 = get_image_base64(img_file)
 
-# --- 1. ВІЗУАЛ (РІВЕНЬ - ЗБРОЯ - ЗІРКИ) ---
+# --- 1. ВІЗУАЛ ---
 current_chance = CHANCES.get(st.session_state.level, 0.25)
 star_html = "".join([f'<img src="data:image/png;base64,{star_64}" class="star-img-fixed">' for _ in range(st.session_state.level)]) if star_64 else "⭐" * st.session_state.level
 weapon_tag = f'<img src="data:image/png;base64,{weapon_64}">' if weapon_64 else "⚔️"
@@ -169,7 +168,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- 2. ЕКОНОМІКА (ЦІНИ) ---
+# --- 2. ЕКОНОМІКА ---
 st.write("---")
 col_s1, col_s2 = st.columns(2)
 with col_s1:
@@ -182,7 +181,7 @@ with col_s2:
     p_sphere = st.number_input("Ціна Сфери", value=400, step=50, label_visibility="collapsed", key="psp")
     st.caption(f"Використано: **{st.session_state.spheres_spent}**")
 
-# --- 3. ПІДСУМОК (ЗОЛОТО + СПРОБИ) ---
+# --- 3. ПІДСУМОК ---
 total_gold = st.session_state.gold_spent + (st.session_state.signs_spent * p_sign) + (st.session_state.spheres_spent * p_sphere)
 st.markdown(f"""
     <div class="stats-panel">
@@ -206,16 +205,29 @@ st.write("")
 c_main, c_auto, c_reset = st.columns([2, 1, 1])
 
 if c_main.button("🔥 ТОЧИТИ"):
-    sharpen(use_signs); st.rerun()
+    sharpen(use_signs)
+    st.rerun()
 
 if c_auto.button("🚀 +10"):
     while st.session_state.level < 10: sharpen(use_signs)
-    st.balloons(); st.rerun()
+    st.balloons()
+    st.rerun()
 
 if c_reset.button("♻️"):
-    st.session_state.update({'level':0, 'gold_spent':0, 'signs_spent':0, 'spheres_spent':0, 'att':0})
+    st.session_state.update({'level':0, 'gold_spent':0, 'signs_spent':0, 'spheres_spent':0, 'att':0, 'last_sound': None})
     st.rerun()
 
 # --- 5. НАЛАШТУВАННЯ ЗБРОЇ (НИЗ) ---
 st.write("---")
-st.session_state.weapon = st.selectbox("Змінити малюнок предмета:", list(WEAPON_IMAGES.keys()))
+
+# Функція для миттєвого оновлення
+def update_weapon():
+    st.session_state.current_weapon = st.session_state.weapon_selector
+
+st.selectbox(
+    "Змінити малюнок предмета:", 
+    options=list(WEAPON_IMAGES.keys()), 
+    index=list(WEAPON_IMAGES.keys()).index(st.session_state.current_weapon),
+    key="weapon_selector",
+    on_change=update_weapon
+)
