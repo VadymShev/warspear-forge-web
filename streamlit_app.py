@@ -41,7 +41,7 @@ st.markdown(f"""
     
     .stButton>button {{ width: 100%; height: 3.2em; font-weight: bold; border-radius: 10px; }}
     .main-btn button {{ background-color: #0d6efd !important; color: white !important; height: 3.5em !important; }}
-    .test-btn button {{ background-color: #dc3545 !important; color: white !important; height: 3.5em !important; }}
+    .test-btn button {{ background-color: #dc3545 !important; color: white !important; font-size: 13px !important; }}
     .lvl-btn button {{ height: 2.5em !important; font-size: 12px !important; background-color: #f1f3f5 !important; color: #333 !important; border: 1px solid #dee2e6 !important; }}
 
     .stats-panel {{ text-align: center; background: #2b2d30; color: white; padding: 10px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; }}
@@ -75,7 +75,6 @@ if 'level' not in st.session_state:
 
 def sharpen_step(use_signs):
     if st.session_state.level >= 10: return
-    
     current_lvl = st.session_state.level
     chances = get_current_chances(st.session_state.current_weapon)
     chance = chances.get(current_lvl, 0.25)
@@ -94,17 +93,14 @@ def sharpen_step(use_signs):
             st.session_state.last_sound = None
         else:
             fail_type = random.choice(["stay", "down", "reset"])
-            if fail_type == "down":
-                st.session_state.level -= 1
-            else:
-                st.session_state.level = 0
+            if fail_type == "down": st.session_state.level -= 1
+            else: st.session_state.level = 0
             st.session_state.last_sound = "fail"
 
-def run_mass_test():
+def run_mass_test(n_attempts):
     max_lvl = st.session_state.level
-    for _ in range(50000):
+    for _ in range(n_attempts):
         if st.session_state.level >= 10: break
-        
         current_lvl = st.session_state.level
         chances = get_current_chances(st.session_state.current_weapon)
         chance = chances.get(current_lvl, 0.25)
@@ -192,7 +188,7 @@ with c_auto10:
         while st.session_state.level < 10:
             old_lvl = st.session_state.level
             sharpen_step(use_signs)
-            if not use_signs and st.session_state.level < old_lvl: break # Зупинка при невдачі без знаків
+            if not use_signs and st.session_state.level < old_lvl: break
         st.balloons(); st.rerun()
 
 with c_reset:
@@ -200,13 +196,26 @@ with c_reset:
         st.session_state.update({'level':0, 'gold_spent':0, 'signs_spent':0, 'spheres_spent':0, 'att':0, 'best_res':0})
         st.rerun()
 
-# Додаткова кнопка тесту (тільки якщо без знаків)
+# ПАНЕЛЬ ТЕСТІВ (БЕЗ ЗНАКІВ)
 if not use_signs:
-    st.markdown('<div class="test-btn">', unsafe_allow_html=True)
-    if st.button("🎰 ТЕСТ 50 000 спроб"):
-        run_mass_test()
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.caption("Масовий тест спроб (без знаків):")
+    t1, t2, t3, t4 = st.columns(4)
+    with t1:
+        st.markdown('<div class="test-btn">', unsafe_allow_html=True)
+        if st.button("1к"): run_mass_test(1000); st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+    with t2:
+        st.markdown('<div class="test-btn">', unsafe_allow_html=True)
+        if st.button("5к"): run_mass_test(5000); st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+    with t3:
+        st.markdown('<div class="test-btn">', unsafe_allow_html=True)
+        if st.button("10к"): run_mass_test(10000); st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+    with t4:
+        st.markdown('<div class="test-btn">', unsafe_allow_html=True)
+        if st.button("50к"): run_mass_test(50000); st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # Швидка заточка (тільки зі знаками)
 if use_signs:
