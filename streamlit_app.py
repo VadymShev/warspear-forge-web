@@ -206,3 +206,13 @@ if use_signs:
                 while st.session_state.level < i: sharpen_step(True)
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
+
+# Додай це в кінці файлу streamlit_app.py
+st.write("---")
+st.markdown(
+    '<div style="text-align:center">'
+    '<img src="https://hitwebcounter.com/counter/counter.php?page=warspear_forge_sim&style=0007&nbdigits=5&type=page&initCount=0" title="Free Counter" Alt="web counter" border="0" />'
+    '<p style="font-size:10px; opacity:0.5;">Счетчик посещений</p>'
+    '</div>', 
+    unsafe_allow_html=True
+)
