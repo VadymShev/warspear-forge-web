@@ -3,10 +3,10 @@ import random
 import os
 import base64
 
-# Налаштування сторінки під мобільні пристрої
+# --- НАЛАШТУВАННЯ СТОРІНКИ ---
 st.set_page_config(page_title="Warspear Forge", page_icon="⚔️", layout="centered")
 
-# Функція для конвертації картинки в base64 (щоб вставити прямо в HTML)
+# Функція для конвертації картинки в base64 (стабільність відображення)
 def get_image_base64(path):
     if os.path.exists(path):
         with open(path, "rb") as f:
@@ -14,60 +14,64 @@ def get_image_base64(path):
         return base64.b64encode(data).decode()
     return None
 
-# Оновлена стилізація для смартфонів
+# --- СТИЛІЗАЦІЯ (CSS) ---
 st.markdown(f"""
     <style>
     .main {{ background-color: #0e1117; }}
     
-    /* Очищення метрик (статистики) */
+    /* Очищення статистики */
     [data-testid="stMetric"] {{
         background-color: transparent !important;
         border: none !important;
         text-align: center;
     }}
-    [data-testid="stMetricLabel"] {{ font-size: 14px !important; justify-content: center; }}
-    [data-testid="stMetricValue"] {{ font-size: 20px !important; }}
+    [data-testid="stMetricLabel"] {{ font-size: 14px !important; justify-content: center; color: #adb5bd; }}
+    [data-testid="stMetricValue"] {{ font-size: 20px !important; color: #ffffff; }}
 
-    /* Кнопки великі для пальців */
+    /* Головний контейнер візуалізації */
+    .main-flex-container {{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+        margin-top: 10px;
+        min-height: 200px;
+    }}
+    
+    /* Сітка зірочок: 2 колонки, що заповнюються горизонтально */
+    .stars-grid {{
+        display: grid;
+        grid-template-columns: repeat(2, 32px);
+        grid-gap: 4px;
+        justify-content: start;
+        align-content: center;
+    }}
+    
+    .star-img-fixed {{
+        width: 32px;
+        height: 32px;
+        object-fit: contain;
+    }}
+
+    /* Стиль кнопок */
     .stButton>button {{
         width: 100%;
-        height: 3.5em;
+        height: 3.8em;
         font-weight: bold;
         font-size: 18px;
         border-radius: 12px;
-        margin-bottom: 10px;
     }}
 
-    /* Контейнер зброї без зайвих рамок */
-    .weapon-display {{
-        text-align: center;
-        padding: 10px;
-        margin-top: -20px;
-    }}
-
-    /* Зірочки з малим інтервалом */
-    .star-row {{
-        display: flex;
-        justify-content: center;
-        gap: 2px; /* Мінімальний інтервал */
-        margin-bottom: 10px;
-        height: 40px;
-    }}
-    .star-img {{
-        width: 35px; /* Збільшений розмір */
-        height: 35px;
-        object-fit: contain;
-    }}
-    
-    .chance-text {{
-        font-size: 18px;
-        font-style: italic;
-        margin-top: 10px;
+    /* Фарбуємо кнопку ТОЧИТИ в синій */
+    div[data-testid="stHorizontalBlock"] > div:last-child button {{
+        background-color: #3a86ff !important;
+        color: white !important;
+        border: none !important;
     }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- ЛОГІКА ---
+# --- ЛОГІКА ТА ДАНІ ---
 if 'level' not in st.session_state:
     st.session_state.update({'level': 0, 'gold': 0, 'signs': 0, 'att': 0})
 
@@ -93,62 +97,72 @@ def sharpen(use_signs):
         if not use_signs and st.session_state.level > 3:
             st.session_state.level = 0
 
-# --- ВІДОБРАЖЕННЯ (ЗВЕРХУ) ---
+# --- ВЕРХНЯ ЧАСТИНА (ВІЗУАЛ) ---
+weapon_name = st.selectbox("Оберіть предмет", list(WEAPON_IMAGES.keys()), label_visibility="collapsed")
 
-# Вибір зброї зверху (компактно)
-weapon_name = st.selectbox("Зброя", list(WEAPON_IMAGES.keys()), label_visibility="collapsed")
-
-# Основний блок візуалізації
-st.markdown('<div class="weapon-display">', unsafe_allow_html=True)
-
-# Малюємо зірочки через HTML для контролю інтервалу
-star_base64 = get_image_base64("star.png")
-star_html = ""
-if star_base64:
-    for _ in range(st.session_state.level):
-        star_html += f'<img src="data:image/png;base64,{star_base64}" class="star-img">'
-else:
-    star_html = "⭐" * st.session_state.level
-
-st.markdown(f'<div class="star-row">{star_html}</div>', unsafe_allow_html=True)
-
-# Картинка зброї
+# Контейнер: Зброя + Зірки
 img_file = WEAPON_IMAGES.get(weapon_name)
-if os.path.exists(img_file):
-    st.image(img_file, width=180)
-else:
-    st.markdown(f"<h2>{weapon_name}</h2>", unsafe_allow_html=True)
+star_base64 = get_image_base64("star.png")
+
+st.markdown('<div class="main-flex-container">', unsafe_allow_html=True)
+
+# 1. Зброя
+col_img, col_stars = st.columns([2, 1]) # Використовуємо колонки для кращого вирівнювання у вебі
+with col_img:
+    if os.path.exists(img_file):
+        st.image(img_file, width=160)
+    else:
+        st.markdown(f"<h2 style='text-align:right;'>{weapon_name}</h2>", unsafe_allow_html=True)
+
+# 2. Зірочки
+with col_stars:
+    star_html = ""
+    if star_base64:
+        for _ in range(st.session_state.level):
+            star_html += f'<img src="data:image/png;base64,{star_base64}" class="star-img-fixed">'
+    else:
+        star_html = "⭐" * st.session_state.level
+    st.markdown(f'<div class="stars-grid">{star_html}</div>', unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
 
 # Рівень та Шанс
 c_chance = CHANCES.get(st.session_state.level, 0)
 chance_clr = '#2ecc71' if c_chance > 20 else '#e74c3c'
 st.markdown(f"""
-    <h1 style="font-size: 70px; color: #FFD700; margin: 0;">+{st.session_state.level}</h1>
-    <div class="chance-text" style="color: {chance_clr};">Шанс успіху: {c_chance}%</div>
+    <div style="text-align: center;">
+        <h1 style="font-size: 60px; color: #FFD700; margin-top: -10px; margin-bottom: 0;">+{st.session_state.level}</h1>
+        <p style="color: {chance_clr}; font-size: 18px; font-style: italic;">Шанс: {c_chance}%</p>
     </div>
 """, unsafe_allow_html=True)
 
-# Статистика посередині (компактно в один рядок)
+# --- СЕРЕДНЯ ЧАСТИНА (СТАТИСТИКА) ---
 st.write("")
 s1, s2, s3 = st.columns(3)
 s1.metric("Золото", f"{st.session_state.gold:,}")
 s2.metric("Знаки", f"{st.session_state.signs:,}")
 s3.metric("Спроби", st.session_state.att)
 
-# --- КЕРУВАННЯ (ЗНИЗУ) ---
+# --- НИЖНЯ ЧАСТИНА (КНОПКИ) ---
 st.divider()
 use_signs = st.toggle("Знаки незламності", value=True)
 
-if st.button("🔥 ТОЧИТИ"):
-    sharpen(use_signs)
-    st.rerun()
+# Кнопки горизонтально: [Скинути, Авто, ТОЧИТИ]
+c_res, c_auto, c_main = st.columns([1, 1, 2])
 
-if st.button("🚀 АВТО +10"):
-    while st.session_state.level < 10:
+with c_res:
+    if st.button("♻️"):
+        st.session_state.update({'level': 0, 'gold': 0, 'signs': 0, 'att': 0})
+        st.rerun()
+
+with c_auto:
+    if st.button("🚀"):
+        while st.session_state.level < 10:
+            sharpen(use_signs)
+        st.balloons()
+        st.rerun()
+
+with c_main:
+    if st.button("🔥 ТОЧИТИ"):
         sharpen(use_signs)
-    st.balloons()
-    st.rerun()
-
-if st.button("♻️ СКИНУТИ", type="secondary"):
-    st.session_state.update({'level': 0, 'gold': 0, 'signs': 0, 'att': 0})
-    st.rerun()
+        st.rerun()
