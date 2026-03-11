@@ -21,35 +21,50 @@ def play_sound(file_path):
             md = f"""<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>"""
             st.components.v1.html(md, height=0)
 
-# --- УЛЬТРА-КОМПАКТНИЙ CSS ---
+# --- CSS СТИЛІЗАЦІЯ ---
 st.markdown(f"""
     <style>
     .block-container {{ 
         padding-top: 1rem !important; 
-        padding-bottom: 0rem !important;
+        padding-bottom: 2rem !important;
         padding-left: 0.5rem !important; 
         padding-right: 0.5rem !important; 
     }}
     
-    /* Контейнер головного візуала: [Рівень] [Зброя] [Зірки] */
     .main-forge-area {{
         display: flex;
         flex-direction: row;
         align-items: center;
         justify-content: center;
-        gap: 15px;
-        margin: 10px 0;
+        gap: 12px;
+        margin-top: 5px;
     }}
     
+    .level-container {{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 70px;
+    }}
+
     .level-display {{
-        font-size: 40px;
+        font-size: 38px;
         color: #ffc107;
         font-weight: bold;
-        min-width: 60px;
-        text-align: right;
+        line-height: 1;
     }}
     
-    .weapon-box img {{ width: 90px !important; height: auto; }}
+    .chance-badge {{
+        font-size: 12px;
+        background: #333;
+        color: #00ff00;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-top: 4px;
+        font-family: monospace;
+    }}
+    
+    .weapon-box img {{ width: 85px !important; height: auto; }}
     
     .stars-box {{
         display: flex;
@@ -61,31 +76,25 @@ st.markdown(f"""
     
     .star-img-fixed {{ width: 20px !important; height: 20px !important; }}
 
-    /* Кнопки в ряд */
-    .stButton>button {{ 
-        width: 100%; 
-        height: 3.5em; 
-        font-weight: bold;
-    }}
+    .stButton>button {{ width: 100%; height: 3.5em; font-weight: bold; border-radius: 8px; }}
     
-    /* Стиль для кнопки ТОЧИТИ */
+    /* Колір кнопки ТОЧИТИ */
     div[data-testid="stHorizontalBlock"] > div:first-child button {{
         background-color: #0d6efd !important;
         color: white !important;
     }}
 
-    /* Поля вводу */
-    .stNumberInput input {{
-        padding: 2px 5px !important;
+    .total-gold-box {{
+        text-align: center; 
+        background: #2b2d30; 
+        color: white;
+        padding: 8px; 
+        border-radius: 8px; 
+        margin: 10px 0;
+        border: 1px solid #444;
     }}
     
-    hr {{ margin: 0.5rem 0 !important; }}
-    
-    .history-text {{
-        font-size: 11px;
-        color: #6c757d;
-        text-align: center;
-    }}
+    hr {{ margin: 0.4rem 0 !important; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -94,7 +103,7 @@ if 'level' not in st.session_state:
     st.session_state.update({
         'level': 0, 'gold_spent': 0, 'signs_spent': 0, 
         'spheres_spent': 0, 'att': 0, 'last_sound': None,
-        'history': []
+        'history': [], 'weapon': "Меч"
     })
 
 CHANCES = {0: 100.0, 1: 60.0, 2: 40.0, 3: 25.0, 4: 15.0, 5: 10.0, 6: 7.0, 7: 4.0, 8: 0.75, 9: 0.25}
@@ -117,83 +126,77 @@ def sharpen(use_signs):
     if use_signs: st.session_state.signs_spent += 1
     
     chance = CHANCES.get(st.session_state.level, 0.25)
-    old_lvl = st.session_state.level
     roll = random.uniform(0, 100)
     
     if roll <= chance:
         st.session_state.level += 1
         st.session_state.last_sound = "success"
-        add_to_history(f"✅ +{old_lvl}➡️+{st.session_state.level}")
+        add_to_history(f"✅ +{st.session_state.level}")
     else:
         if use_signs or st.session_state.level <= 3:
             st.session_state.last_sound = None
-            add_to_history(f"💨 Невдача +{old_lvl}")
         else:
             fail_type = random.choice(["stay", "down", "reset"])
-            if fail_type == "stay":
-                add_to_history(f"💨 Невдача +{old_lvl}")
-            elif fail_type == "down":
+            if fail_type == "down":
                 st.session_state.level -= 1
                 st.session_state.last_sound = "fail"
-                add_to_history(f"📉 -1 рівень")
             elif fail_type == "reset":
                 st.session_state.level = 0
                 st.session_state.last_sound = "fail"
-                add_to_history(f"❌ КРАХ +0")
 
 # --- ВІДТВОРЕННЯ ЗВУКУ ---
 if st.session_state.last_sound:
     play_sound(f"{st.session_state.last_sound}.mp3")
     st.session_state.last_sound = None
 
-# --- 1. ВИБІР ЗБРОЇ (ЗВЕРХУ) ---
-weapon_name = st.selectbox("Оберіть предмет:", list(WEAPON_IMAGES.keys()), label_visibility="collapsed")
-
-# Завантаження ресурсів
-img_file = WEAPON_IMAGES.get(weapon_name)
+# Завантаження картинок
+img_file = WEAPON_IMAGES.get(st.session_state.weapon)
 star_64 = get_image_base64("star.png")
 sign_64 = get_image_base64("sign.png")
 sphere_64 = get_image_base64("sphere.png")
 weapon_64 = get_image_base64(img_file)
 
-# --- 2. ВІЗУАЛ (РІВЕНЬ - ЗБРОЯ - ЗІРКИ) ---
+# --- 1. ВІЗУАЛ (РІВЕНЬ/ШАНС - ЗБРОЯ - ЗІРКИ) ---
+current_chance = CHANCES.get(st.session_state.level, 0.25)
 star_html = "".join([f'<img src="data:image/png;base64,{star_64}" class="star-img-fixed">' for _ in range(st.session_state.level)]) if star_64 else "⭐" * st.session_state.level
 weapon_tag = f'<img src="data:image/png;base64,{weapon_64}">' if weapon_64 else "⚔️"
 
 st.markdown(f"""
     <div class="main-forge-area">
-        <div class="level-display">+{st.session_state.level}</div>
+        <div class="level-container">
+            <div class="level-display">+{st.session_state.level}</div>
+            <div class="chance-badge">{current_chance}%</div>
+        </div>
         <div class="weapon-box">{weapon_tag}</div>
         <div class="stars-box">{star_html}</div>
     </div>
 """, unsafe_allow_html=True)
 
-# --- 3. ЗНАКИ ТА СФЕРИ (ЦІНА ТА КІЛЬКІСТЬ) ---
+# --- 2. ЕКОНОМІКА (ЗНАКИ ТА СФЕРИ) ---
 st.write("---")
 col_s1, col_s2 = st.columns(2)
-
 with col_s1:
-    if sign_64: st.image(f"data:image/png;base64,{sign_64}", width=25)
+    if sign_64: st.image(f"data:image/png;base64,{sign_64}", width=22)
     p_sign = st.number_input("Ціна Знака", value=2500, step=100, label_visibility="collapsed", key="ps")
-    st.caption(f"Витрачено: **{st.session_state.signs_spent}** шт.")
+    st.caption(f"Витрачено: **{st.session_state.signs_spent}**")
 
 with col_s2:
-    if sphere_64: st.image(f"data:image/png;base64,{sphere_64}", width=25)
+    if sphere_64: st.image(f"data:image/png;base64,{sphere_64}", width=22)
     p_sphere = st.number_input("Ціна Сфери", value=400, step=50, label_visibility="collapsed", key="psp")
-    st.caption(f"Витрачено: **{st.session_state.spheres_spent}** шт.")
+    st.caption(f"Витрачено: **{st.session_state.spheres_spent}**")
 
-# --- 4. ЗОЛОТО ТА ГАЛОЧКА ---
+# --- 3. ПІДСУМОК ТА ГАЛОЧКА ---
 total_gold = st.session_state.gold_spent + (st.session_state.signs_spent * p_sign) + (st.session_state.spheres_spent * p_sphere)
 st.markdown(f"""
-    <div style="text-align: center; background: #e9ecef; padding: 5px; border-radius: 8px; margin-bottom: 5px;">
-        <span style="font-size: 12px; color: #666;">Загальні витрати:</span><br>
-        <b style="font-size: 18px; color: #198754;">{total_gold:,} 💰</b>
+    <div class="total-gold-box">
+        <span style="font-size: 11px; opacity: 0.8;">Всього витрачено золота:</span><br>
+        <b style="font-size: 20px; color: #4ade80;">{total_gold:,} 💰</b>
     </div>
 """, unsafe_allow_html=True)
 
 use_signs = st.toggle("Використовувати Знаки Незламності", value=True)
 
-# --- 5. КНОПКИ (В КІНЦІ) ---
+# --- 4. КНОПКИ (ТОЧИТИ, +10, СКИНУТИ) ---
 st.write("")
 c_main, c_auto, c_reset = st.columns([2, 1, 1])
 
@@ -208,5 +211,7 @@ if c_reset.button("♻️"):
     st.session_state.update({'level':0, 'gold_spent':0, 'signs_spent':0, 'spheres_spent':0, 'att':0, 'history':[]})
     st.rerun()
 
-# Маленька історія в самому низу
-st.markdown(f'<p class="history-text">{" | ".join(st.session_state.history)}</p>', unsafe_allow_html=True)
+# --- 5. ВИБІР ЗБРОЇ (В САМОМУ НИЗУ) ---
+st.write("---")
+st.session_state.weapon = st.selectbox("Змінити предмет:", list(WEAPON_IMAGES.keys()))
+st.caption(f"Спроб: {st.session_state.att} | Історія: {' > '.join(st.session_state.history[:3])}")
