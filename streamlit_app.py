@@ -16,7 +16,8 @@ def get_image_base64(path):
 # --- СТИЛІЗАЦІЯ (CSS) ---
 st.markdown(f"""
     <style>
-    .block-container {{ padding-top: 1rem !important; padding-bottom: 0rem !important; }}
+    /* Відступ зверху, щоб не перекривало панеллю сайту */
+    .block-container {{ padding-top: 3.5rem !important; padding-bottom: 1rem !important; }}
     .stApp {{ background-color: #f8f9fa; color: #333333; }}
     
     /* Статистика */
@@ -35,7 +36,7 @@ st.markdown(f"""
         align-items: center;
         justify-content: center;
         gap: 20px;
-        margin: 10px 0;
+        margin: 15px 0;
         width: 100%;
     }}
     
@@ -66,9 +67,7 @@ st.markdown(f"""
         border: none !important;
     }}
 
-    /* Поля вводу цін */
-    .stNumberInput label {{ font-size: 12px !important; }}
-    hr {{ margin: 0.5rem 0 !important; }}
+    hr {{ margin: 0.8rem 0 !important; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -89,13 +88,9 @@ WEAPON_IMAGES = {
 
 def sharpen(use_signs):
     if st.session_state.level >= 10: return
-    
     st.session_state.att += 1
-    # Податок золотом
     st.session_state.gold_spent += int(650 + (st.session_state.level * 104))
-    # Сфери витрачаються завжди
     st.session_state.spheres_spent += 1
-    
     if use_signs: 
         st.session_state.signs_spent += 1
     
@@ -106,24 +101,17 @@ def sharpen(use_signs):
         if not use_signs and st.session_state.level > 3:
             st.session_state.level = 0
 
-# --- ПАНЕЛЬ НАЛАШТУВАНЬ (ЦІНИ) ---
-with st.expander("💰 Налаштування цін (Ринок)", expanded=False):
-    col_p1, col_p2 = st.columns(2)
-    with col_p1:
-        price_sign = st.number_input("Ціна Знаку", value=2500, step=100)
-    with col_p2:
-        price_sphere = st.number_input("Ціна Сфери", value=400, step=50)
-
-# --- ІНТЕРФЕЙС ---
+# --- 1. ВИБІР ЗБРОЇ ---
 weapon_name = st.selectbox("Предмет заточування:", list(WEAPON_IMAGES.keys()))
 
+# Завантаження картинок
 img_file = WEAPON_IMAGES.get(weapon_name)
 star_64 = get_image_base64("star.png")
 sign_64 = get_image_base64("sign.png")
 sphere_64 = get_image_base64("sphere.png")
 weapon_64 = get_image_base64(img_file)
 
-# Візуалізація Зброя + Зірки
+# --- 2. ВІЗУАЛ (ЗБРОЯ ТА ЗІРКИ) ---
 star_html = "".join([f'<img src="data:image/png;base64,{star_64}" class="star-img-fixed">' for _ in range(st.session_state.level)]) if star_64 else "⭐" * st.session_state.level
 weapon_tag = f'<img src="data:image/png;base64,{weapon_64}" width="130">' if weapon_64 else f'<h3>{weapon_name}</h3>'
 
@@ -134,18 +122,13 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# Рівень
-st.markdown(f'<h1 style="text-align:center; font-size:60px; color:#ffc107; margin:0;">+{st.session_state.level}</h1>', unsafe_allow_html=True)
+st.markdown(f'<h1 style="text-align:center; font-size:60px; color:#ffc107; margin:0; line-height:1;">+{st.session_state.level}</h1>', unsafe_allow_html=True)
 
-# Підрахунок загальної вартості (Золото + Знаки за ціною + Сфери за ціною)
-total_cost = st.session_state.gold_spent + (st.session_state.signs_spent * price_sign) + (st.session_state.spheres_spent * price_sphere)
-
-# Статистика з картинками
+# --- 3. СТАТИСТИКА ВИТРАТ ---
 st.write("---")
 m1, m2, m3 = st.columns(3)
 
-# Функція для відображення метрики з іконкою
-def icon_metric(col, img_64, label, value, color="#212529"):
+def icon_metric(col, img_64, label, value):
     with col:
         if img_64:
             st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{img_64}" width="25"></div>', unsafe_allow_html=True)
@@ -155,14 +138,22 @@ icon_metric(m1, sign_64, "Знаки", st.session_state.signs_spent)
 icon_metric(m2, sphere_64, "Сфери", st.session_state.spheres_spent)
 icon_metric(m3, None, "Спроби", st.session_state.att)
 
-st.markdown(f"""
-    <div style="text-align: center; background: #e9ecef; padding: 10px; border-radius: 10px; margin: 10px 0;">
-        <span style="color: #6c757d; font-size: 14px;">Загальні витрати (еквівалент золота):</span><br>
-        <b style="font-size: 22px; color: #198754;">{total_cost:,} 💰</b>
-    </div>
-""", unsafe_allow_html=True)
+# --- 4. НАЛАШТУВАННЯ ЦІН ТА РАЗОМ ---
+with st.expander("🛠️ Ринкові ціни та підсумок"):
+    col_p1, col_p2 = st.columns(2)
+    price_sign = col_p1.number_input("Ціна Знаку", value=2500, step=100)
+    price_sphere = col_p2.number_input("Ціна Сфери", value=400, step=50)
+    
+    total_cost = st.session_state.gold_spent + (st.session_state.signs_spent * price_sign) + (st.session_state.spheres_spent * price_sphere)
+    st.markdown(f"""
+        <div style="text-align: center; background: #e9ecef; padding: 10px; border-radius: 10px; margin-top: 10px;">
+            <span style="color: #6c757d; font-size: 14px;">Поточна вартість заточування:</span><br>
+            <b style="font-size: 20px; color: #198754;">{total_cost:,} 💰</b>
+        </div>
+    """, unsafe_allow_html=True)
 
-# Кнопки
+# --- 5. КНОПКИ КЕРУВАННЯ ---
+st.write("") # Невеликий відступ
 use_signs = st.toggle("Знаки незламності", value=True)
 c_res, c_auto, c_main = st.columns([1, 1, 2])
 
