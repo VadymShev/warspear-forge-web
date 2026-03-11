@@ -61,7 +61,7 @@ WEAPON_IMAGES = {
 ONE_HANDED = ["Меч", "Сокира", "Булава", "Кинджал"]
 
 def get_current_chances(weapon_name):
-    chances = {0: 100.0, 1: 60.0, 2: 40.0, 3: 25.0, 4: 15.0, 5: 10.0, 6: 7.0, 7: 4.0, 8: 0.75, 9: 0.2}
+    chances = {0: 100.0, 1: 60.0, 2: 40.0, 3: 25.0, 4: 15.0, 5: 10.0, 6: 7.0, 7: 2.0, 8: 0.75, 9: 0.2}
     if weapon_name in ONE_HANDED:
         chances[8], chances[9] = 1.25, 0.35
     return chances
@@ -215,6 +215,7 @@ st.markdown(
     '</div>', 
     unsafe_allow_html=True
 )
+
 
 
 
