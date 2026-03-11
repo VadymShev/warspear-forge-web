@@ -41,11 +41,7 @@ st.markdown(f"""
     
     /* Кнопки */
     .stButton>button {{ width: 100%; height: 3.2em; font-weight: bold; border-radius: 10px; }}
-    
-    /* Кнопка ТОЧИТИ */
     .main-btn button {{ background-color: #0d6efd !important; color: white !important; height: 3.5em !important; }}
-    
-    /* Малі кнопки рівнів */
     .lvl-btn button {{ height: 2.5em !important; font-size: 12px !important; background-color: #f1f3f5 !important; color: #333 !important; border: 1px solid #dee2e6 !important; }}
 
     .stats-panel {{ text-align: center; background: #2b2d30; color: white; padding: 10px; border-radius: 10px; margin: 10px 0; border: 1px solid #444; }}
@@ -79,18 +75,14 @@ if 'level' not in st.session_state:
     })
 
 def sharpen(use_signs, target=None):
-    # Якщо ціль не задана - одна спроба, якщо задана - точимо до цілі
     limit = target if target else st.session_state.level + 1
-    
     while st.session_state.level < limit and st.session_state.level < 10:
         st.session_state.att += 1
         st.session_state.gold_spent += int(650 + (st.session_state.level * 104))
         st.session_state.spheres_spent += 1
         if use_signs: st.session_state.signs_spent += 1
-        
         chances = get_current_chances(st.session_state.current_weapon)
         chance = chances.get(st.session_state.level, 0.25)
-        
         roll = random.uniform(0, 100)
         if roll <= chance:
             st.session_state.level += 1
@@ -98,8 +90,8 @@ def sharpen(use_signs, target=None):
         else:
             if use_signs or st.session_state.level <= 3:
                 st.session_state.last_sound = None
-                if target: continue # Продовжуємо спроби до переможного
-                else: break # Одна невдала спроба і вихід
+                if target: continue
+                else: break
             else:
                 fail_type = random.choice(["stay", "down", "reset"])
                 if fail_type == "down":
@@ -108,24 +100,24 @@ def sharpen(use_signs, target=None):
                 elif fail_type == "reset":
                     st.session_state.level = 0
                     st.session_state.last_sound = "fail"
-                if target: break # При краху/пониженні авто-заточка зупиняється
-                else: break
+                break
 
-# --- ВІДТВОРЕННЯ ЗВУКУ ---
+# --- ЗВУК ---
 if st.session_state.last_sound:
     play_sound(f"{st.session_state.last_sound}.mp3")
     st.session_state.last_sound = None
 
+# --- 1. ВІЗУАЛ ТА ВИБІР ЗБРОЇ ---
+chances_map = get_current_chances(st.session_state.current_weapon)
+current_chance = chances_map.get(st.session_state.level, 0.25)
+
 # Ресурси
 img_file = WEAPON_IMAGES.get(st.session_state.current_weapon)
 star_64 = get_image_base64("star.png")
+weapon_64 = get_image_base64(img_file)
 sign_64 = get_image_base64("sign.png")
 sphere_64 = get_image_base64("sphere.png")
-weapon_64 = get_image_base64(img_file)
 
-# --- ВІЗУАЛ ---
-chances_map = get_current_chances(st.session_state.current_weapon)
-current_chance = chances_map.get(st.session_state.level, 0.25)
 star_html = "".join([f'<img src="data:image/png;base64,{star_64}" class="star-img-fixed">' for _ in range(st.session_state.level)]) if star_64 else "⭐" * st.session_state.level
 weapon_tag = f'<img src="data:image/png;base64,{weapon_64}">' if weapon_64 else "⚔️"
 
@@ -140,7 +132,14 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- ЕКОНОМІКА ---
+# СЕЛЕКТОР ОДРАЗУ ПІД ЗБРОЄЮ
+def update_weapon(): st.session_state.current_weapon = st.session_state.weapon_selector
+
+st.selectbox("Вибір зброї:", options=list(WEAPON_IMAGES.keys()), 
+             index=list(WEAPON_IMAGES.keys()).index(st.session_state.current_weapon),
+             key="weapon_selector", on_change=update_weapon, label_visibility="collapsed")
+
+# --- 2. ЕКОНОМІКА ---
 st.write("---")
 col_s1, col_s2 = st.columns(2)
 with col_s1:
@@ -152,7 +151,7 @@ with col_s2:
     p_sphere = st.number_input("Ціна Сфери", value=400, step=50, label_visibility="collapsed", key="psp")
     st.caption(f"Використано: **{st.session_state.spheres_spent}**")
 
-# --- ПІДСУМОК ---
+# --- 3. ПІДСУМОК ---
 total_gold = st.session_state.gold_spent + (st.session_state.signs_spent * p_sign) + (st.session_state.spheres_spent * p_sphere)
 st.markdown(f"""
     <div class="stats-panel">
@@ -165,7 +164,7 @@ st.markdown(f"""
 
 use_signs = st.toggle("Використовувати Знаки Незламності", value=True)
 
-# --- КНОПКИ ДІЇ ---
+# --- 4. КНОПКИ ДІЇ ---
 st.write("")
 c_main, c_auto10, c_reset = st.columns([2, 1, 1])
 
@@ -183,7 +182,7 @@ with c_reset:
         st.session_state.update({'level':0, 'gold_spent':0, 'signs_spent':0, 'spheres_spent':0, 'att':0})
         st.rerun()
 
-# --- КНОПКИ ШВИДКИХ РІВНІВ ---
+# --- 5. КНОПКИ ШВИДКИХ РІВНІВ ---
 st.caption("Авто-заточка до рівня:")
 l6, l7, l8, l9 = st.columns(4)
 with l6:
@@ -202,10 +201,3 @@ with l9:
     st.markdown('<div class="lvl-btn">', unsafe_allow_html=True)
     if st.button("+9"): sharpen(use_signs, target=9); st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
-
-# --- ВИБІР ЗБРОЇ (НИЗ) ---
-st.write("---")
-def update_weapon(): st.session_state.current_weapon = st.session_state.weapon_selector
-st.selectbox("Малюнок предмета:", options=list(WEAPON_IMAGES.keys()), 
-             index=list(WEAPON_IMAGES.keys()).index(st.session_state.current_weapon),
-             key="weapon_selector", on_change=update_weapon)
