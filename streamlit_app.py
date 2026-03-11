@@ -93,7 +93,7 @@ with col2:
         for i in range(st.session_state.level):
             with cols[i]:
                 if os.path.exists("star.png"):
-                    st.image("star.png", width=50)
+                    st.image("star.png", width=80)
                 else:
                     st.write("⭐")
 
@@ -117,4 +117,5 @@ s1, s2, s3 = st.columns(3)
 s1.metric("Витрачено золота", f"{st.session_state.gold:,}")
 s2.metric("Витрачено знаків", f"{st.session_state.signs:,}")
 s3.metric("Всього спроб", st.session_state.att)
+
 
