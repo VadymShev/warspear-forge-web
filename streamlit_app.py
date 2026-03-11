@@ -28,21 +28,27 @@ st.markdown(f"""
     [data-testid="stMetricLabel"] {{ font-size: 13px !important; color: #6c757d; justify-content: center; }}
     [data-testid="stMetricValue"] {{ font-size: 18px !important; color: #212529; text-align: center; }}
 
-    /* Контейнер: Зброя зліва, Зірки справа */
-    .main-flex-container {{
+    /* Контейнер: Зброя та Зірки */
+    .forge-container {{
         display: flex;
+        flex-direction: row; /* Горизонтальне розташування */
         align-items: center;
         justify-content: center;
-        gap: 15px;
-        margin: 10px 0;
+        gap: 20px;
+        margin: 15px 0;
+        width: 100%;
     }}
     
-    /* СІТКА ЗІРОК: 5 колонок, 2 ряди (горизонтально) */
-    .stars-grid {{
-        display: grid;
-        grid-template-columns: repeat(5, 30px); /* 5 зірок в ряд */
-        grid-template-rows: repeat(2, 30px);    /* 2 ряди */
-        grid-gap: 4px;
+    /* ЗІРОЧКИ: Горизонтальний ряд з переносом */
+    .stars-box {{
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;    /* Дозволяє переносити на новий ряд */
+        justify-content: flex-start;
+        align-content: center;
+        width: 160px;       /* Обмежуємо ширину, щоб влазило рівно 5 зірок (30px * 5 + gap) */
+        gap: 2px;
+        min-height: 70px;
     }}
     
     .star-img-fixed {{
@@ -65,10 +71,7 @@ st.markdown(f"""
         border: none !important;
     }}
 
-    /* Повертаємо заголовок вибору зброї */
     .stSelectbox label {{ color: #333333 !important; font-weight: bold !important; }}
-    
-    .stElementContainer {{ margin-bottom: -5px !important; }}
     hr {{ margin: 0.5rem 0 !important; }}
     </style>
     """, unsafe_allow_html=True)
@@ -78,7 +81,6 @@ if 'level' not in st.session_state:
     st.session_state.update({'level': 0, 'gold': 0, 'signs': 0, 'att': 0})
 
 CHANCES = {0: 100.0, 1: 60.0, 2: 40.0, 3: 25.0, 4: 15.0, 5: 10.0, 6: 7.0, 7: 4.0, 8: 1.5, 9: 0.5}
-
 WEAPON_IMAGES = {
     "Посох": "staff.png", "Меч": "sword.png", "Дворучний меч": "greatsword.png",
     "Сокира": "axe.png", "Дворучна сокира": "greataxe.png", "Булава": "mace.png",
@@ -101,22 +103,12 @@ def sharpen(use_signs):
 
 # --- ІНТЕРФЕЙС ---
 
-# Вибір зброї (тепер підписаний)
 weapon_name = st.selectbox("Оберіть вашу зброю:", list(WEAPON_IMAGES.keys()))
 
-# Основний блок (Зброя + Зірки)
 img_file = WEAPON_IMAGES.get(weapon_name)
 star_base64 = get_image_base64("star.png")
 
-st.markdown('<div class="main-flex-container">', unsafe_allow_html=True)
-
-# 1. Зброя (Зліва)
-if os.path.exists(img_file):
-    st.image(img_file, width=130)
-else:
-    st.markdown(f"<h3>{weapon_name}</h3>", unsafe_allow_html=True)
-
-# 2. Зірочки (Справа, 2 ряди по 5)
+# Використовуємо один блок HTML для стабільного вирівнювання
 star_html = ""
 if star_base64:
     for _ in range(st.session_state.level):
@@ -124,17 +116,23 @@ if star_base64:
 else:
     star_html = "⭐" * st.session_state.level
 
-st.markdown(f'<div class="stars-grid">{star_html}</div>', unsafe_allow_html=True)
+# Головний контейнер (Зброя + Зірки)
+weapon_img_tag = f'<img src="data:image/png;base64,{get_image_base64(img_file)}" width="130">' if os.path.exists(img_file) else f'<h3>{weapon_name}</h3>'
 
-st.markdown('</div>', unsafe_allow_html=True)
+st.markdown(f"""
+    <div class="forge-container">
+        <div class="weapon-box">{weapon_img_tag}</div>
+        <div class="stars-box">{star_html}</div>
+    </div>
+""", unsafe_allow_html=True)
 
 # Рівень та Шанс
 c_chance = CHANCES.get(st.session_state.level, 0)
 chance_clr = '#198754' if c_chance > 20 else '#dc3545'
 st.markdown(f"""
     <div style="text-align: center;">
-        <h1 style="font-size: 60px; color: #ffc107; margin: 0;">+{st.session_state.level}</h1>
-        <p style="color: {chance_clr}; font-size: 16px; margin-bottom: 10px;">Ймовірність успіху: {c_chance}%</p>
+        <h1 style="font-size: 65px; color: #ffc107; margin: 0;">+{st.session_state.level}</h1>
+        <p style="color: {chance_clr}; font-size: 16px; margin-bottom: 10px; font-weight: bold;">Ймовірність успіху: {c_chance}%</p>
     </div>
 """, unsafe_allow_html=True)
 
