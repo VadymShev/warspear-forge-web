@@ -4,7 +4,7 @@ import os
 import base64
 
 # --- НАЛАШТУВАННЯ СТОРІНКИ ---
-st.set_page_config(page_title="Warspear Forge", page_icon="⚔️", layout="centered")
+st.set_page_config(page_title="Warspear Forge Calc", page_icon="⚔️", layout="centered")
 
 def get_image_base64(path):
     if os.path.exists(path):
@@ -23,39 +23,34 @@ st.markdown(f"""
     [data-testid="stMetric"] {{
         background-color: transparent !important;
         padding: 0px !important;
-        margin-bottom: -10px !important;
+        margin-bottom: -5px !important;
     }}
-    [data-testid="stMetricLabel"] {{ font-size: 13px !important; color: #6c757d; justify-content: center; }}
-    [data-testid="stMetricValue"] {{ font-size: 18px !important; color: #212529; text-align: center; }}
+    [data-testid="stMetricLabel"] {{ font-size: 12px !important; color: #6c757d; justify-content: center; }}
+    [data-testid="stMetricValue"] {{ font-size: 16px !important; color: #212529; text-align: center; }}
 
     /* Контейнер: Зброя та Зірки */
     .forge-container {{
         display: flex;
-        flex-direction: row; /* Горизонтальне розташування */
+        flex-direction: row;
         align-items: center;
         justify-content: center;
         gap: 20px;
-        margin: 15px 0;
+        margin: 10px 0;
         width: 100%;
     }}
     
-    /* ЗІРОЧКИ: Горизонтальний ряд з переносом */
     .stars-box {{
         display: flex;
         flex-direction: row;
-        flex-wrap: wrap;    /* Дозволяє переносити на новий ряд */
+        flex-wrap: wrap;
         justify-content: flex-start;
         align-content: center;
-        width: 160px;       /* Обмежуємо ширину, щоб влазило рівно 5 зірок (30px * 5 + gap) */
+        width: 160px;
         gap: 2px;
         min-height: 70px;
     }}
     
-    .star-img-fixed {{
-        width: 30px;
-        height: 30px;
-        object-fit: contain;
-    }}
+    .star-img-fixed {{ width: 30px; height: 30px; object-fit: contain; }}
 
     /* Кнопки */
     .stButton>button {{
@@ -71,14 +66,18 @@ st.markdown(f"""
         border: none !important;
     }}
 
-    .stSelectbox label {{ color: #333333 !important; font-weight: bold !important; }}
+    /* Поля вводу цін */
+    .stNumberInput label {{ font-size: 12px !important; }}
     hr {{ margin: 0.5rem 0 !important; }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- ЛОГІКА ---
+# --- ЛОГІКА ТА СТАН ---
 if 'level' not in st.session_state:
-    st.session_state.update({'level': 0, 'gold': 0, 'signs': 0, 'att': 0})
+    st.session_state.update({
+        'level': 0, 'gold_spent': 0, 'signs_spent': 0, 
+        'spheres_spent': 0, 'att': 0
+    })
 
 CHANCES = {0: 100.0, 1: 60.0, 2: 40.0, 3: 25.0, 4: 15.0, 5: 10.0, 6: 7.0, 7: 4.0, 8: 1.5, 9: 0.5}
 WEAPON_IMAGES = {
@@ -90,9 +89,15 @@ WEAPON_IMAGES = {
 
 def sharpen(use_signs):
     if st.session_state.level >= 10: return
+    
     st.session_state.att += 1
-    st.session_state.gold += int(650 + (st.session_state.level * 104))
-    if use_signs: st.session_state.signs += 1
+    # Податок золотом
+    st.session_state.gold_spent += int(650 + (st.session_state.level * 104))
+    # Сфери витрачаються завжди
+    st.session_state.spheres_spent += 1
+    
+    if use_signs: 
+        st.session_state.signs_spent += 1
     
     chance = CHANCES.get(st.session_state.level, 0.5)
     if random.uniform(0, 100) <= chance:
@@ -101,62 +106,74 @@ def sharpen(use_signs):
         if not use_signs and st.session_state.level > 3:
             st.session_state.level = 0
 
-# --- ІНТЕРФЕЙС ---
+# --- ПАНЕЛЬ НАЛАШТУВАНЬ (ЦІНИ) ---
+with st.expander("💰 Налаштування цін (Ринок)", expanded=False):
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        price_sign = st.number_input("Ціна Знаку", value=2500, step=100)
+    with col_p2:
+        price_sphere = st.number_input("Ціна Сфери", value=400, step=50)
 
-weapon_name = st.selectbox("Оберіть вашу зброю:", list(WEAPON_IMAGES.keys()))
+# --- ІНТЕРФЕЙС ---
+weapon_name = st.selectbox("Предмет заточування:", list(WEAPON_IMAGES.keys()))
 
 img_file = WEAPON_IMAGES.get(weapon_name)
-star_base64 = get_image_base64("star.png")
+star_64 = get_image_base64("star.png")
+sign_64 = get_image_base64("sign.png")
+sphere_64 = get_image_base64("sphere.png")
+weapon_64 = get_image_base64(img_file)
 
-# Використовуємо один блок HTML для стабільного вирівнювання
-star_html = ""
-if star_base64:
-    for _ in range(st.session_state.level):
-        star_html += f'<img src="data:image/png;base64,{star_base64}" class="star-img-fixed">'
-else:
-    star_html = "⭐" * st.session_state.level
-
-# Головний контейнер (Зброя + Зірки)
-weapon_img_tag = f'<img src="data:image/png;base64,{get_image_base64(img_file)}" width="130">' if os.path.exists(img_file) else f'<h3>{weapon_name}</h3>'
+# Візуалізація Зброя + Зірки
+star_html = "".join([f'<img src="data:image/png;base64,{star_64}" class="star-img-fixed">' for _ in range(st.session_state.level)]) if star_64 else "⭐" * st.session_state.level
+weapon_tag = f'<img src="data:image/png;base64,{weapon_64}" width="130">' if weapon_64 else f'<h3>{weapon_name}</h3>'
 
 st.markdown(f"""
     <div class="forge-container">
-        <div class="weapon-box">{weapon_img_tag}</div>
+        <div class="weapon-box">{weapon_tag}</div>
         <div class="stars-box">{star_html}</div>
     </div>
 """, unsafe_allow_html=True)
 
-# Рівень та Шанс
-c_chance = CHANCES.get(st.session_state.level, 0)
-chance_clr = '#198754' if c_chance > 20 else '#dc3545'
+# Рівень
+st.markdown(f'<h1 style="text-align:center; font-size:60px; color:#ffc107; margin:0;">+{st.session_state.level}</h1>', unsafe_allow_html=True)
+
+# Підрахунок загальної вартості (Золото + Знаки за ціною + Сфери за ціною)
+total_cost = st.session_state.gold_spent + (st.session_state.signs_spent * price_sign) + (st.session_state.spheres_spent * price_sphere)
+
+# Статистика з картинками
+st.write("---")
+m1, m2, m3 = st.columns(3)
+
+# Функція для відображення метрики з іконкою
+def icon_metric(col, img_64, label, value, color="#212529"):
+    with col:
+        if img_64:
+            st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{img_64}" width="25"></div>', unsafe_allow_html=True)
+        st.metric(label, value)
+
+icon_metric(m1, sign_64, "Знаки", st.session_state.signs_spent)
+icon_metric(m2, sphere_64, "Сфери", st.session_state.spheres_spent)
+icon_metric(m3, None, "Спроби", st.session_state.att)
+
 st.markdown(f"""
-    <div style="text-align: center;">
-        <h1 style="font-size: 65px; color: #ffc107; margin: 0;">+{st.session_state.level}</h1>
-        <p style="color: {chance_clr}; font-size: 16px; margin-bottom: 10px; font-weight: bold;">Ймовірність успіху: {c_chance}%</p>
+    <div style="text-align: center; background: #e9ecef; padding: 10px; border-radius: 10px; margin: 10px 0;">
+        <span style="color: #6c757d; font-size: 14px;">Загальні витрати (еквівалент золота):</span><br>
+        <b style="font-size: 22px; color: #198754;">{total_cost:,} 💰</b>
     </div>
 """, unsafe_allow_html=True)
 
-# Статистика
-s1, s2, s3 = st.columns(3)
-s1.metric("Золото", f"{st.session_state.gold:,}")
-s2.metric("Знаки", f"{st.session_state.signs:,}")
-s3.metric("Спроби", st.session_state.att)
-
 # Кнопки
-st.divider()
-use_signs = st.toggle("Використовувати знаки незламності", value=True)
-
+use_signs = st.toggle("Знаки незламності", value=True)
 c_res, c_auto, c_main = st.columns([1, 1, 2])
+
 with c_res:
     if st.button("♻️"):
-        st.session_state.update({'level': 0, 'gold': 0, 'signs': 0, 'att': 0})
+        st.session_state.update({'level':0, 'gold_spent':0, 'signs_spent':0, 'spheres_spent':0, 'att':0})
         st.rerun()
 with c_auto:
     if st.button("🚀"):
         while st.session_state.level < 10: sharpen(use_signs)
-        st.balloons()
-        st.rerun()
+        st.balloons(); st.rerun()
 with c_main:
     if st.button("🔥 ТОЧИТИ"):
-        sharpen(use_signs)
-        st.rerun()
+        sharpen(use_signs); st.rerun()
