@@ -73,38 +73,55 @@ if 'level' not in st.session_state:
         'current_weapon': "Меч", 'best_res': 0
     })
 
-def sharpen_logic(current_lvl, weapon_name, use_signs):
-    chances = get_current_chances(weapon_name)
+def sharpen_step(use_signs):
+    if st.session_state.level >= 10: return
+    
+    current_lvl = st.session_state.level
+    chances = get_current_chances(st.session_state.current_weapon)
     chance = chances.get(current_lvl, 0.25)
     roll = random.uniform(0, 100)
     
-    gold = int(650 + (current_lvl * 104))
+    st.session_state.att += 1
+    st.session_state.gold_spent += int(650 + (current_lvl * 104))
+    st.session_state.spheres_spent += 1
+    if use_signs: st.session_state.signs_spent += 1
     
     if roll <= chance:
-        return current_lvl + 1, gold, True
+        st.session_state.level += 1
+        st.session_state.last_sound = "success"
     else:
         if use_signs or current_lvl <= 3:
-            return current_lvl, gold, False
+            st.session_state.last_sound = None
         else:
             fail_type = random.choice(["stay", "down", "reset"])
-            if fail_type == "down": return current_lvl - 1, gold, False
-            return 0, gold, False
+            if fail_type == "down":
+                st.session_state.level -= 1
+            else:
+                st.session_state.level = 0
+            st.session_state.last_sound = "fail"
 
 def run_mass_test():
-    max_lvl = 0
+    max_lvl = st.session_state.level
     for _ in range(50000):
-        # Виконуємо одну спробу на поточному рівні
-        new_lvl, gold, success = sharpen_logic(st.session_state.level, st.session_state.current_weapon, False)
+        if st.session_state.level >= 10: break
         
-        # Оновлюємо глобальну статистику
+        current_lvl = st.session_state.level
+        chances = get_current_chances(st.session_state.current_weapon)
+        chance = chances.get(current_lvl, 0.25)
+        roll = random.uniform(0, 100)
+        
         st.session_state.att += 1
-        st.session_state.gold_spent += gold
+        st.session_state.gold_spent += int(650 + (current_lvl * 104))
         st.session_state.spheres_spent += 1
-        st.session_state.level = new_lvl
         
-        if st.session_state.level > max_lvl:
-            max_lvl = st.session_state.level
-    
+        if roll <= chance:
+            st.session_state.level += 1
+            if st.session_state.level > max_lvl: max_lvl = st.session_state.level
+        else:
+            if current_lvl > 3:
+                fail_type = random.choice(["stay", "down", "reset"])
+                if fail_type == "down": st.session_state.level -= 1
+                elif fail_type == "reset": st.session_state.level = 0
     st.session_state.best_res = max_lvl
 
 # --- ВІЗУАЛ ---
@@ -164,40 +181,32 @@ use_signs = st.toggle("Використовувати Знаки Незламн�
 c_main, c_auto10, c_reset = st.columns([2, 1, 1])
 
 with c_main:
-    if use_signs:
-        st.markdown('<div class="main-btn">', unsafe_allow_html=True)
-        if st.button("🔥 ТОЧИТИ"): 
-            lvl, g, s = sharpen_logic(st.session_state.level, st.session_state.current_weapon, True)
-            st.session_state.level = lvl
-            st.session_state.gold_spent += g
-            st.session_state.att += 1
-            st.session_state.spheres_spent += 1
-            st.session_state.signs_spent += 1
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="test-btn">', unsafe_allow_html=True)
-        if st.button("🎰 ТЕСТ 50к"): 
-            run_mass_test()
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-btn">', unsafe_allow_html=True)
+    if st.button("🔥 ТОЧИТИ"): 
+        sharpen_step(use_signs)
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 with c_auto10:
     if st.button("🚀 +10"):
         while st.session_state.level < 10:
-            lvl, g, s = sharpen_logic(st.session_state.level, st.session_state.current_weapon, use_signs)
-            st.session_state.level = lvl
-            st.session_state.gold_spent += g
-            st.session_state.att += 1
-            st.session_state.spheres_spent += 1
-            if use_signs: st.session_state.signs_spent += 1
-            if not use_signs and (lvl == 0 or lvl < st.session_state.level): break 
+            old_lvl = st.session_state.level
+            sharpen_step(use_signs)
+            if not use_signs and st.session_state.level < old_lvl: break # Зупинка при невдачі без знаків
         st.balloons(); st.rerun()
 
 with c_reset:
     if st.button("♻️"):
         st.session_state.update({'level':0, 'gold_spent':0, 'signs_spent':0, 'spheres_spent':0, 'att':0, 'best_res':0})
         st.rerun()
+
+# Додаткова кнопка тесту (тільки якщо без знаків)
+if not use_signs:
+    st.markdown('<div class="test-btn">', unsafe_allow_html=True)
+    if st.button("🎰 ТЕСТ 50 000 спроб"):
+        run_mass_test()
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # Швидка заточка (тільки зі знаками)
 if use_signs:
@@ -207,12 +216,6 @@ if use_signs:
         with col:
             st.markdown('<div class="lvl-btn">', unsafe_allow_html=True)
             if st.button(f"+{i}"):
-                while st.session_state.level < i:
-                    lvl, g, s = sharpen_logic(st.session_state.level, st.session_state.current_weapon, True)
-                    st.session_state.level = lvl
-                    st.session_state.gold_spent += g
-                    st.session_state.att += 1
-                    st.session_state.spheres_spent += 1
-                    st.session_state.signs_spent += 1
+                while st.session_state.level < i: sharpen_step(True)
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
