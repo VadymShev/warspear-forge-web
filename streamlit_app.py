@@ -21,6 +21,13 @@ def play_sound(file_path):
             md = f"""<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>"""
             st.components.v1.html(md, height=0)
 
+# Функція для відображення метрики з іконкою (ПЕРЕНЕСЕНО ВГОРУ)
+def icon_metric(col, img_64, label, value):
+    with col:
+        if img_64: 
+            st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{img_64}" width="25"></div>', unsafe_allow_html=True)
+        st.metric(label, value)
+
 # --- СТИЛІЗАЦІЯ ---
 st.markdown(f"""
     <style>
@@ -43,7 +50,6 @@ if 'level' not in st.session_state:
         'history': []
     })
 
-# Оновлені шанси (на 9 та 10 зменшено вдвічі)
 CHANCES = {
     0: 100.0, 1: 60.0, 2: 40.0, 3: 25.0, 4: 15.0, 
     5: 10.0, 6: 7.0, 7: 4.0, 8: 0.75, 9: 0.25
@@ -73,20 +79,15 @@ def sharpen(use_signs):
     roll = random.uniform(0, 100)
     
     if roll <= chance:
-        # УСПІХ
         st.session_state.level += 1
         st.session_state.last_sound = "success"
         add_to_history(f"✅ +{old_lvl} ➡️ +{st.session_state.level}")
     else:
-        # НЕВДАЧА
         if use_signs or st.session_state.level <= 3:
-            # Збереження рівня (якщо зі знаками або рівень до +3)
             st.session_state.last_sound = None
             add_to_history(f"💨 Невдача: +{old_lvl} (збережено)")
         else:
-            # Логіка БЕЗ знаків на рівнях 4+
             fail_type = random.choice(["stay", "down", "reset"])
-            
             if fail_type == "stay":
                 add_to_history(f"💨 Невдача: +{old_lvl} (збережено)")
                 st.session_state.last_sound = None
@@ -110,6 +111,7 @@ elif st.session_state.last_sound == "fail":
 # --- ІНТЕРФЕЙС ---
 weapon_name = st.selectbox("Оберіть предмет:", list(WEAPON_IMAGES.keys()))
 img_file = WEAPON_IMAGES.get(weapon_name)
+
 star_64 = get_image_base64("star.png")
 sign_64 = get_image_base64("sign.png")
 sphere_64 = get_image_base64("sphere.png")
@@ -123,14 +125,6 @@ st.markdown(f'<h1 style="text-align:center; font-size:60px; color:#ffc107; margi
 
 st.write("---")
 m1, m2, m3 = st.columns(3)
-icon_metric(m1, sign_64, "Знаки", st.session_state.signs_spent) if 'icon_metric' not in locals() else None # Додано нижче для виклику
-
-# (Повтор функції для коректності)
-def icon_metric(col, img_64, label, value):
-    with col:
-        if img_64: st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{img_64}" width="25"></div>', unsafe_allow_html=True)
-        st.metric(label, value)
-
 icon_metric(m1, sign_64, "Знаки", st.session_state.signs_spent)
 icon_metric(m2, sphere_64, "Сфери", st.session_state.spheres_spent)
 icon_metric(m3, None, "Спроби", st.session_state.att)
