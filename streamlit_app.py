@@ -212,7 +212,8 @@ st.write("---")
 st.markdown(
     '<div style="text-align:center">'
     '<img src="https://hitwebcounter.com/counter/counter.php?page=warspear_forge_sim&style=0007&nbdigits=5&type=page&initCount=0" title="Free Counter" Alt="web counter" border="0" />'
-    '<p style="font-size:10px; opacity:0.5;">Счетчик посещений</p>'
+    '<p style="font-size:10px; opacity:0.5;">лічильник відвідувань</p>'
     '</div>', 
     unsafe_allow_html=True
 )
+
